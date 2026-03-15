@@ -9,6 +9,7 @@
 import { getConfig, validateConfig, isRegistered, isVerified } from "./config/index.js";
 import { AgentRunner } from "./agent/runner.js";
 import { startTUI } from "./tui/index.js";
+import { ApiServer } from "./api/server.js";
 import { logger } from "./utils/logger.js";
 import chalk from "chalk";
 import figlet from "figlet";
@@ -57,7 +58,14 @@ async function main() {
 
   if (useTUI) {
     // Start with TUI
-    startTUI();
+    const runner = new AgentRunner();
+    const apiServer = new ApiServer(runner);
+    runner.setApiServer(apiServer);
+    apiServer.start(Number(process.env.API_PORT) || 3000);
+
+    startTUI(runner); // Pass runner to TUI if needed, but startTUI creates its own runner usually.
+    // Wait, src/tui/index.tsx App component creates its own runner: const [runner] = useState(() => new AgentRunner());
+    // This is problematic. I should refactor TUI to accept a runner.
   } else {
     // Start without TUI
     console.log(chalk.cyan("Starting Seed Agent...\n"));
@@ -66,6 +74,9 @@ async function main() {
     console.log(chalk.gray(`  Poll Interval: ${config.pollInterval}s\n`));
 
     const runner = new AgentRunner();
+    const apiServer = new ApiServer(runner);
+    runner.setApiServer(apiServer);
+    apiServer.start(Number(process.env.API_PORT) || 3000);
 
     runner.on("event", (event) => {
       switch (event.type) {

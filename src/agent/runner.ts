@@ -8,6 +8,7 @@ import { logger } from "../utils/logger.js";
 import { cleanupProject } from "../tools/projectBuilder.js";
 import { APP_TEMPLATES } from "../tools/templates.js";
 import type { Job, AgentEvent, TokenUsage, FileAttachment, WebSocketJobEvent } from "../types/index.js";
+import { ApiServer } from "../api/server.js";
 
 // Approximate costs per 1M tokens for common models (input/output)
 const MODEL_COSTS: Record<string, { input: number; output: number }> = {
@@ -59,6 +60,8 @@ export class AgentRunner extends EventEmitter implements TypedEventEmitter {
   private processedJobs: Set<string>;
   private pusher: any | null = null;
   private wsConnected = false;
+  private apiServer: ApiServer | null = null;
+  private statsInterval: NodeJS.Timeout | null = null;
   private stats = {
     jobsProcessed: 0,
     jobsSkipped: 0,
@@ -102,6 +105,9 @@ export class AgentRunner extends EventEmitter implements TypedEventEmitter {
    */
   private emitEvent(event: AgentEvent): void {
     this.emit("event", event);
+    if (this.apiServer) {
+      this.apiServer.setStats(this.getStats());
+    }
   }
 
   // ─────────────────────────────────────────
@@ -275,6 +281,21 @@ export class AgentRunner extends EventEmitter implements TypedEventEmitter {
 
     // Start polling loop (always runs as fallback, slower when WS is active)
     await this.poll();
+
+    // Start stats update loop for API
+    this.statsInterval = setInterval(() => {
+      if (this.apiServer) {
+        this.apiServer.setStats(this.getStats());
+      }
+    }, 2000);
+  }
+
+  /**
+   * Set the API server instance
+   */
+  public setApiServer(apiServer: ApiServer): void {
+    this.apiServer = apiServer;
+    this.apiServer.setStats(this.getStats());
   }
 
   /**
@@ -285,6 +306,10 @@ export class AgentRunner extends EventEmitter implements TypedEventEmitter {
     if (this.pollTimer) {
       clearTimeout(this.pollTimer);
       this.pollTimer = null;
+    }
+    if (this.statsInterval) {
+      clearInterval(this.statsInterval);
+      this.statsInterval = null;
     }
     this.disconnectWebSocket();
     this.emitEvent({ type: "shutdown" });

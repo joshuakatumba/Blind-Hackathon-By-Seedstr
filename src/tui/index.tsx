@@ -153,7 +153,7 @@ function HelpBar() {
   );
 }
 
-function App() {
+function App({ runner }: { runner: AgentRunner }) {
   const { exit } = useApp();
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [stats, setStats] = useState<Stats>({
@@ -166,7 +166,6 @@ function App() {
     totalCost: 0,
   });
   const [running, setRunning] = useState(false);
-  const [runner] = useState(() => new AgentRunner());
 
   const addLog = (type: string, message: string, color?: string) => {
     const time = new Date().toLocaleTimeString("en-US", {
@@ -272,8 +271,8 @@ function App() {
   );
 }
 
-export function startTUI() {
-  render(<App />);
+export function startTUI(runner: AgentRunner) {
+  render(<App runner={runner} />);
 }
 
 export default startTUI;
