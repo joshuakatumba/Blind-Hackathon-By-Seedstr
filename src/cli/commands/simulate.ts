@@ -1,9 +1,11 @@
 import chalk from "chalk";
 import ora from "ora";
-import prompts from "prompts";
+import _prompts from "prompts";
+const prompts = (_prompts as any).default || _prompts;
 import { getConfig } from "../../config/index.js";
 import { getLLMClient } from "../../llm/client.js";
 import { cleanupProject } from "../../tools/projectBuilder.js";
+import { APP_TEMPLATES } from "../../tools/templates.js";
 import type { Job, TokenUsage } from "../../types/index.js";
 
 const MODEL_COSTS: Record<string, { input: number; output: number }> = {
@@ -117,10 +119,17 @@ Guidelines:
 - Be professional and concise
 - If you use web search, cite your sources
 
-Responding to jobs:
-- Most jobs are asking for TEXT responses — writing, answers, advice, ideas, analysis, tweets, emails, etc. For these, just respond directly with well-written text. Do NOT create files for text-based requests.
-- Only use create_file and finalize_project when the job is genuinely asking for a deliverable code project (a website, app, script, tool, etc.) that the requester would need to download and run/open.
-- Use your judgment to determine what the requester actually wants. "Write me a tweet" = text response. "Build me a landing page" = file project.
+Project Building (CRITICAL FOR HACKATHON):
+- You MUST build a COMPLETE, RUNNABLE web application.
+- Use create_file for EACH file needed (index.html, package.json, vite.config.js, src/main.jsx, src/App.jsx, src/index.css, etc).
+- Use React, Vite, and Tailwind CSS.
+- Your web apps MUST HAVE PREMIUM DESIGN: Dark mode, glassmorphism (bg-slate-900/50 backdrop-blur), gradient text, modern typography, and smooth micro-animations. Avoid generic boxy layouts.
+- Provide real interactive state (useState/useReducer) and local data persistence where applicable.
+
+Template Blueprints:
+${JSON.stringify(APP_TEMPLATES, null, 2)}
+
+- Call finalize_project AFTER all standard Vite/React project files are created successfully to package them into a zip.
 
 Job Budget: $${effectiveBudget.toFixed(2)} USD${fakeJob.jobType === "SWARM" ? ` (your share of $${fakeJob.budget.toFixed(2)} total across ${fakeJob.maxAgents} agents)` : ""}`;
 

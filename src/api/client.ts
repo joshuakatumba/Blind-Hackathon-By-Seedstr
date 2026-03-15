@@ -37,7 +37,7 @@ export class SeedstrClient {
   private async request<T>(
     endpoint: string,
     options: RequestInit = {},
-    useV2 = false
+    useV2 = true // Default to v2 as v1 is deprecated
   ): Promise<T> {
     const base = useV2 ? this.baseUrlV2 : this.baseUrl;
     const url = `${base}${endpoint}`;
@@ -48,22 +48,40 @@ export class SeedstrClient {
       ...(options.headers as Record<string, string>),
     };
 
-    logger.debug(`API Request: ${options.method || "GET"} ${endpoint}`);
+    logger.debug(`API Request: ${options.method || "GET"} ${url}`);
 
-    const response = await fetch(url, {
-      ...options,
-      headers,
-    });
+    try {
+      const response = await fetch(url, {
+        ...options,
+        headers,
+      });
 
-    const data = await response.json();
+      const responseText = await response.text();
+      let data: any;
+      
+      try {
+        data = JSON.parse(responseText);
+      } catch (e) {
+        data = { message: responseText };
+      }
 
-    if (!response.ok) {
-      const error = data as ApiError;
-      logger.error(`API Error: ${error.message}`);
-      throw new Error(error.message || `API request failed: ${response.status}`);
+      if (!response.ok) {
+        const error = data as ApiError;
+        const msg = error.message || responseText || `API request failed: ${response.status}`;
+        logger.error(`API Error (${response.status}): ${msg}`);
+        throw new Error(msg);
+      }
+
+      return data as T;
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.message.includes("fetch failed")) {
+          logger.error(`Network Error: ${error.message}. Please check your connection to ${url}`);
+        }
+        throw error;
+      }
+      throw new Error(String(error));
     }
-
-    return data as T;
   }
 
   /**
@@ -223,10 +241,14 @@ export class SeedstrClient {
    * Upload a file to the Seedstr file upload service
    * Returns the file URL and metadata for use in responses
    */
-  async uploadFile(filePath: string): Promise<FileAttachment> {
+  async uploadFile(filePath: string, retries = 3): Promise<FileAttachment> {
     const config = getConfig();
     
     // Get file info
+    if (!statSync(filePath).isFile()) {
+      throw new Error(`File not found: ${filePath}`);
+    }
+    
     const stats = statSync(filePath);
     const fileName = basename(filePath);
     
@@ -261,44 +283,68 @@ export class SeedstrClient {
     // Upload to the v1/upload endpoint (server-side upload API)
     const uploadUrl = `${config.seedstrApiUrl}/upload`;
     
-    const response = await fetch(uploadUrl, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        files: [
-          {
-            name: fileName,
-            content: base64Content,
-            type: mimeType,
+    let lastError: any;
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        const response = await fetch(uploadUrl, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${this.apiKey}`,
+            "Content-Type": "application/json",
           },
-        ],
-      }),
-    });
+          body: JSON.stringify({
+            files: [
+              {
+                name: fileName,
+                content: base64Content,
+                type: mimeType,
+              },
+            ],
+          }),
+        });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      logger.error(`Upload failed: ${response.status} - ${errorText}`);
-      throw new Error(`File upload failed: ${response.status}`);
+        if (!response.ok) {
+          const errorText = await response.text();
+          let errorData;
+          try {
+            errorData = JSON.parse(errorText);
+          } catch (e) {
+            errorData = { message: errorText };
+          }
+          throw new Error(`Upload failed: ${response.status} - ${errorData.message || errorText}`);
+        }
+
+        const result = (await response.json()) as { 
+          success: boolean; 
+          files: FileUploadResult[]; 
+          failed?: { name: string; error: string }[] 
+        };
+        
+        if (!result.success || !result.files || result.files.length === 0) {
+          const failMsg = result.failed?.[0]?.error || "No files returned";
+          throw new Error(`Upload failed: ${failMsg}`);
+        }
+        
+        const fileResult = result.files[0];
+        logger.debug(`File uploaded successfully: ${fileResult.url}`);
+
+        return {
+          url: fileResult.url,
+          name: fileResult.name,
+          size: fileResult.size,
+          type: fileResult.type,
+        };
+      } catch (error) {
+        lastError = error;
+        logger.warn(`Upload attempt ${attempt} failed: ${error instanceof Error ? error.message : String(error)}`);
+        if (attempt < retries) {
+          const delay = Math.pow(2, attempt) * 1000;
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
     }
 
-    const result = (await response.json()) as { success: boolean; files: FileUploadResult[]; failed?: { name: string; error: string }[] };
-    
-    if (!result.success || !result.files || result.files.length === 0) {
-      throw new Error("Upload failed: No files returned");
-    }
-    
-    const fileResult = result.files[0];
-    logger.debug(`File uploaded successfully: ${fileResult.url}`);
-
-    return {
-      url: fileResult.url,
-      name: fileResult.name,
-      size: fileResult.size,
-      type: fileResult.type,
-    };
+    throw lastError || new Error(`Failed to upload ${fileName} after ${retries} attempts`);
   }
 
   /**

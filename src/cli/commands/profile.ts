@@ -1,6 +1,7 @@
 import chalk from "chalk";
 import ora from "ora";
-import prompts from "prompts";
+import _prompts from "prompts";
+const prompts = (_prompts as any).default || _prompts;
 import { SeedstrClient } from "../../api/client.js";
 import { isRegistered, saveProfile, getStoredAgent } from "../../config/index.js";
 
