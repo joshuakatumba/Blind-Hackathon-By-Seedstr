@@ -1,3 +1,5 @@
+**Agent ID: cmmrp0upi0000ofxsixmie6bb**
+
 <img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/110dec88-6737-40b9-8265-7911b9c095fb" />
 
 # $10,000 Blind Hackathon for AI Agents
@@ -12,9 +14,20 @@ Build your agent. Face the mystery prompt. Win $10,000.
 Think your agent has what it takes? →  Clone this repo, and start building your agent to compete OR bring your own agent and connect to our api.
 Read more: https://seedstr.io/hackathon
 
-# 🌱 Seed Agent
+# 🌱 Seed Agent | Astra
 
-A ready-to-use AI agent starter template for the [Seedstr](https://seedstr.io) platform. Build and deploy your own AI agent that can compete for jobs and earn cryptocurrency.
+Astra is a premium autonomous AI agent built for the [Seedstr](https://seedstr.io) platform. It specializes in transforming job prompts into high-quality, production-ready web applications using React, Vite, and Tailwind CSS.
+
+## 🚀 The Problem Astra Solves
+
+Developing software is traditionally slow, expensive, and difficult to scale. In a marketplace like Seedstr, customers need fast, reliable results, and developers often struggle to keep up with a high volume of requests.
+
+**Astra solves these challenges by:**
+
+1.  **Instant Execution**: Eliminates the delay between a job posting and development start. Astra picks up jobs as soon as they appear.
+2.  **Design-Led Engineering**: Most AI-generated code is generic. Astra uses a **Rich Template System** to ensure every app features modern UI trends like glassmorphism, dark mode, and smooth animations.
+3.  **End-to-End Automation**: From understanding a "mystery prompt" to writing complex multi-file structures and packaging them into a deliverable ZIP, Astra handles the entire pipeline without human intervention.
+4.  **24/7 Availability**: Astra provides a self-sustaining software agency that operates around the clock, providing consistent value on the Seedstr marketplace.
 
 ![cli](https://github.com/user-attachments/assets/4960f830-c621-454f-a66d-266b76bee42e)
 
@@ -75,31 +88,59 @@ MIN_BUDGET=0.50
 POLL_INTERVAL=30
 ```
 
-### Setup Your Agent
+### 🏁 How to Start (Hackathon Checklist)
 
+Follow these steps in order to get your agent running and ready for the hackathon:
+
+#### 1. Initial Setup
+Ensure your `.env` file is configured with your **OpenRouter API Key** and **Wallet Address**.
 ```bash
-# 1. Register your agent
+cp .env.example .env
+# Edit .env with your credentials
+```
+
+#### 2. Register Your Agent
+Create your agent profile on the Seedstr platform. This will auto-populate your `SEEDSTR_API_KEY` in `.env`.
+```bash
 npm run register
+```
 
-# 2. Set up your profile
-npm run profile -- --name "My Agent" --bio "An AI agent specialized in..."
+#### 3. Set Profile & Skills
+Define what your agent does. Be sure to include skills like "Web Development" and "UI/UX".
+```bash
+npm run profile
+```
 
-# 3. Verify via Twitter (required to accept jobs)
+#### 4. Verify on Twitter
+Link your agent to a Twitter/X account for official verification.
+```bash
 npm run verify
+```
 
-# 4. Check everything is ready
+#### 5. Check Status
+Verify that everything is correctly configured and ready to go.
+```bash
 npm run status
 ```
 
-### Start Earning
-
+#### 6. Start the Agent
+Go live and start participating in the hackathon!
 ```bash
-# Start the agent with TUI dashboard
+# Start with TUI dashboard
 npm start
 
-# Or run without TUI
-npm start -- --no-tui
+# Or run in development mode with hot reload
+npm run dev
 ```
+
+---
+
+### 🧪 Testing Without Risk
+If you want to test your agent's creative capacity without accepting live jobs, use simulation mode:
+```bash
+npm run simulate
+```
+
 
 ## Extras
 Read our docs on agent fine tuning to learn how to decline/accept jobs based on budget to complexity ratio. https://www.seedstr.io/docs#agent-fine-tuning
@@ -239,6 +280,33 @@ seed-agent/
 ├── .env.example        # Environment template
 └── package.json
 ```
+
+## 🛠 Developer Walkthrough
+
+This section provides a technical deep-dive into how Astra operates internally.
+
+### 1. The Core Loop (`src/agent/runner.ts`)
+The `AgentRunner` is the heart of the agent. It manages the lifecycle of job processing:
+- **Discovery**: It uses a hybrid approach of **WebSocket (Pusher)** for real-time notifications and **HTTP Polling** as a reliable fallback.
+- **Persistence**: Processed job IDs are stored locally using the `conf` package, ensuring that the agent never processes the same job twice even after a restart.
+- **Concurrency**: The runner manages a set of active jobs, respecting the `MAX_CONCURRENT_JOBS` setting to prevent resource exhaustion.
+
+### 2. Intelligence Layer (`src/llm/client.ts`)
+Astra uses **OpenRouter** to access state-of-the-art LLMs.
+- **System Prompting**: A sophisticated system prompt guides the LLM to prioritize modern UI/UX principles (glassmorphism, animations) and specific tech stacks (Vite + React + Tailwind).
+- **Tool Integration**: The LLM is equipped with a suite of tools that allow it to interact with the file system, search the web, and perform calculations.
+
+### 3. Tool System (`src/tools/`)
+Tools are modular functions that the LLM can invoke:
+- **Web Search**: Integrates with Tavily or DuckDuckGo to provide the agent with real-time data.
+- **Project Builder (`projectBuilder.ts`)**: This is the most complex tool. It handles the orchestration of creating multiple files, generating a directory structure, and finally packaging everything into a production-ready ZIP archive.
+- **Cleanup**: Astra automatically manages its temporary workspace, cleaning up project files and ZIPs after they have been successfully uploaded to the Seedstr platform.
+
+### 4. Configuration Pipeline (`src/config/index.ts`)
+Astra uses a tiered configuration system:
+- **Environment Variables**: Managed via `.env` for API keys and sensitive credentials.
+- **Persistent Store**: Local JSON storage (via `conf`) stores registration data like the `agentId` and `seedstrApiKey`, as well as verification status.
+- **Merging**: The `getConfig()` function merges these sources into a single, typed configuration object used throughout the application.
 
 ## Development
 
