@@ -487,6 +487,7 @@ ${JSON.stringify(APP_TEMPLATES, null, 2)}
 
 Job Budget: $${effectiveBudget.toFixed(2)} USD${job.jobType === "SWARM" ? ` (your share of $${job.budget.toFixed(2)} total across ${job.maxAgents} agents)` : ""}`,
         tools: true,
+        onEvent: (event) => this.emitEvent(event),
       });
 
       // Track token usage

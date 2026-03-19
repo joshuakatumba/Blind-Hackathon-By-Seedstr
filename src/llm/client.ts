@@ -108,6 +108,7 @@ export interface GenerateOptions {
   maxTokens?: number;
   temperature?: number;
   tools?: boolean;
+  onEvent?: (event: any) => void;
 }
 
 /**
@@ -310,9 +311,6 @@ export class LLMClient {
 
     logger.debug(`Generating response with model: ${this.model}`);
 
-    // Reset project builder for each generation
-    activeProjectBuilder = null;
-
     const tools = enableTools ? this.getTools() : undefined;
     const hasTools = tools && Object.keys(tools).length > 0;
 
@@ -329,6 +327,7 @@ export class LLMClient {
           maxTokens,
           temperature,
           tools: hasTools ? tools : undefined,
+          onEvent: options.onEvent,
         });
         
         return result;
@@ -394,8 +393,9 @@ export class LLMClient {
     maxTokens: number;
     temperature: number;
     tools?: Record<string, CoreTool>;
+    onEvent?: (event: any) => void;
   }): Promise<LLMResponse> {
-    const { prompt, systemPrompt, maxTokens, temperature, tools } = params;
+    const { prompt, systemPrompt, maxTokens, temperature, tools, onEvent } = params;
     const hasTools = tools && Object.keys(tools).length > 0;
 
     try {
@@ -412,6 +412,30 @@ export class LLMClient {
           logger.debug(`Step finished - finishReason: ${step.finishReason}, hasText: ${!!step.text}, toolCalls: ${step.toolCalls?.length || 0}`);
           if (step.text) {
             logger.debug(`Step text preview: ${step.text.substring(0, 100)}...`);
+          }
+
+          // Emit tool call events
+          if (step.toolCalls && onEvent) {
+            for (const tc of step.toolCalls) {
+              onEvent({
+                type: "tool_call",
+                tool: (tc as any).toolName,
+                args: (tc as any).args,
+              });
+            }
+          }
+
+          // Emit tool result events
+          if (step.toolResults && onEvent) {
+            for (const tr of step.toolResults) {
+              // Find tool name from toolCalls
+              const tc = step.toolCalls?.find(t => (t as any).toolCallId === (tr as any).toolCallId);
+              onEvent({
+                type: "tool_result",
+                tool: (tc as any)?.toolName || 'unknown',
+                result: (tr as any).result,
+              });
+            }
           }
         },
       });

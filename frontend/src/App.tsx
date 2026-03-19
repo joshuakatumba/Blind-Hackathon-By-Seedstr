@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
   Activity, 
   Cpu, 
@@ -12,7 +12,7 @@ import {
   ExternalLink,
   Search
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -127,44 +127,64 @@ export default function App() {
 
   useEffect(() => {
     // Fetch initial config and status
-    fetch('http://localhost:3000/api/config')
+    fetch('http://localhost:3005/api/config')
       .then(res => res.json())
       .then(setConfig)
       .catch(() => {});
 
-    fetch('http://localhost:3000/api/stats')
+    fetch('http://localhost:3005/api/stats')
       .then(res => res.json())
       .then(setStats)
       .catch(() => {});
 
     // Setup SSE
-    const eventSource = new EventSource('http://localhost:3000/api/events');
+    const eventSource = new EventSource('http://localhost:3005/api/events');
     
+    eventSource.onopen = () => {
+      setStats(prev => ({ ...prev, wsConnected: true }));
+    };
+
     eventSource.onmessage = (event) => {
       const data = JSON.parse(event.data);
       
       // Update logs
       const time = new Date().toLocaleTimeString('en-US', { hour12: false });
+      let message = data.message || `Event: ${data.type}`;
+      let type = data.type.replace('job_', '').replace('response_', '').replace('files_', '').replace('websocket_', '');
+
+      // Custom message formatting
+      if (data.type === 'job_found') message = `Found Job: $${data.job.budget}`;
+      if (data.type === 'tool_call') {
+        type = 'tool';
+        message = `Calling Tool: ${data.tool}`;
+      }
+      if (data.type === 'tool_result') {
+        type = 'done';
+        message = `Tool ${data.tool} completed`;
+      }
+      if (data.type === 'response_submitted') message = `Response Submitted: ${data.responseId.slice(0, 8)}...`;
+      if (data.type === 'error') message = `Error: ${data.message}`;
+      if (data.type === 'startup') message = 'Astra Agent Started';
+      if (data.type === 'shutdown') message = 'Astra Agent Shutting Down';
+
       const newLog: LogEntry = {
         id: Math.random().toString(36).substr(2, 9),
         time,
-        type: data.type.replace('job_', '').replace('response_', '').replace('files_', ''),
-        message: data.message || `Event: ${data.type}`,
+        type,
+        message,
       };
-
-      // Custom message formatting
-      if (data.type === 'job_found') newLog.message = `Found Job: $${data.job.budget}`;
-      if (data.type === 'tool_call') newLog.message = `Calling Tool: ${data.tool}`;
-      if (data.type === 'response_submitted') newLog.message = `Response Submitted: ${data.responseId.slice(0, 8)}...`;
-      if (data.type === 'error') newLog.message = `Error: ${data.message}`;
 
       setLogs(prev => [...prev.slice(-100), newLog]);
 
-      // Trigger stats refresh (or the server could send them)
-      fetch('http://localhost:3000/api/stats')
+      // Trigger stats refresh
+      fetch('http://localhost:3005/api/stats')
         .then(res => res.json())
         .then(setStats)
         .catch(() => {});
+    };
+
+    eventSource.onerror = () => {
+      setStats(prev => ({ ...prev, wsConnected: false }));
     };
 
     return () => eventSource.close();
@@ -207,14 +227,20 @@ export default function App() {
           <div className="flex items-center gap-4">
             <div className="flex flex-col items-end">
               <div className="flex items-center gap-2">
-                <div className={cn("w-2 h-2 rounded-full animate-pulse", stats.wsConnected ? "bg-green-500 shadow-[0_0_8px_#22c55e]" : "bg-yellow-500")} />
-                <span className="text-sm font-medium text-white/80">{stats.wsConnected ? "WebSocket Connected" : "Polling Active"}</span>
+                <div className={cn("w-2 h-2 rounded-full animate-pulse", stats.wsConnected ? "bg-green-500 shadow-[0_0_8px_#22c55e]" : "bg-red-500 shadow-[0_0_8px_#ef4444]")} />
+                <span className="text-sm font-medium text-white/80">{stats.wsConnected ? "Sync Active" : "Disconnected"}</span>
               </div>
-              <span className="text-[10px] text-white/30 uppercase tracking-tighter">System Status</span>
+              <span className="text-[10px] text-white/30 uppercase tracking-tighter">{stats.wsConnected ? (stats.activeJobs > 0 ? "Processing Jobs" : "Idle / Polling") : "Connection Lost"}</span>
             </div>
             <div className="h-8 w-[1px] bg-white/10 mx-2" />
             <div className="flex gap-2">
-              <button className="glass px-4 py-2 rounded-xl text-sm font-medium hover:bg-white/5 transition-colors border border-white/10 flex items-center gap-2">
+              <button 
+                onClick={() => setLogs([])}
+                className="glass px-3 py-2 rounded-xl text-xs font-medium hover:bg-white/5 transition-colors border border-white/10 flex items-center gap-2"
+              >
+                Clear
+              </button>
+              <button className="glass px-4 py-2 rounded-xl text-sm font-medium bg-primary/10 hover:bg-primary/20 transition-colors border border-primary/20 flex items-center gap-2 text-primary">
                 <Activity size={14} />
                 Live Control
               </button>

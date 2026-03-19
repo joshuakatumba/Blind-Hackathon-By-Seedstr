@@ -9,7 +9,21 @@ export class ApiServer {
   private app = express();
   private clients: any[] = [];
   private eventEmitter: EventEmitter;
-  private currentStats: any = {};
+  private currentStats: Stats = {
+    jobsProcessed: 0,
+    jobsSkipped: 0,
+    errors: 0,
+    startTime: Date.now(),
+    totalPromptTokens: 0,
+    totalCompletionTokens: 0,
+    totalTokens: 0,
+    totalCost: 0,
+    uptime: 0,
+    activeJobs: 0,
+    wsConnected: false,
+    avgTokensPerJob: 0,
+    avgCostPerJob: 0,
+  };
 
   constructor(eventEmitter: EventEmitter) {
     this.eventEmitter = eventEmitter;
@@ -70,8 +84,20 @@ export class ApiServer {
   }
 
   public start(port: number) {
-    this.app.listen(port, () => {
-      logger.info(`API Server running on http://localhost:${port}`);
-    });
+    try {
+      const server = this.app.listen(port, () => {
+        logger.info(`API Server running on http://localhost:${port}`);
+      });
+      
+      server.on('error', (error: any) => {
+        if (error.code === 'EADDRINUSE') {
+          logger.error(`API Server failed to start: Port ${port} is already in use.`);
+        } else {
+          logger.error(`API Server error: ${error.message}`);
+        }
+      });
+    } catch (error: any) {
+      logger.error(`Failed to start API Server: ${error.message}`);
+    }
   }
 }

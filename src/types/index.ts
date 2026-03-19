@@ -272,4 +272,20 @@ export type AgentEvent =
   | { type: "error"; message: string; error?: Error }
   | { type: "shutdown" };
 
+export interface Stats {
+  jobsProcessed: number;
+  jobsSkipped: number;
+  errors: number;
+  startTime: number;
+  totalPromptTokens: number;
+  totalCompletionTokens: number;
+  totalTokens: number;
+  totalCost: number;
+  uptime: number;
+  activeJobs: number;
+  wsConnected: boolean;
+  avgTokensPerJob: number;
+  avgCostPerJob: number;
+}
+
 export type EventHandler = (event: AgentEvent) => void;

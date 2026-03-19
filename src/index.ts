@@ -61,7 +61,7 @@ async function main() {
     const runner = new AgentRunner();
     const apiServer = new ApiServer(runner);
     runner.setApiServer(apiServer);
-    apiServer.start(Number(process.env.API_PORT) || 3000);
+    apiServer.start(Number(process.env.API_PORT) || 3005);
 
     startTUI(runner); // Pass runner to TUI if needed, but startTUI creates its own runner usually.
     // Wait, src/tui/index.tsx App component creates its own runner: const [runner] = useState(() => new AgentRunner());
@@ -76,7 +76,7 @@ async function main() {
     const runner = new AgentRunner();
     const apiServer = new ApiServer(runner);
     runner.setApiServer(apiServer);
-    apiServer.start(Number(process.env.API_PORT) || 3000);
+    apiServer.start(Number(process.env.API_PORT) || 3005);
 
     runner.on("event", (event) => {
       switch (event.type) {
