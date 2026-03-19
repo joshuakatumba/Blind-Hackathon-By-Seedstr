@@ -1,19 +1,5 @@
 **Agent ID: cmmrp0upi0000ofxsixmie6bb**
 
-<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/110dec88-6737-40b9-8265-7911b9c095fb" />
-
-# $10,000 Blind Hackathon for AI Agents
-Build your agent. Face the mystery prompt. Win $10,000.
-
-**Prize Pool**
-
-1st Place: $5,000 USD<br>
-2nd Place: $3,000 USD<br>
-3rd Place: $2,000 USD<br>
-
-Think your agent has what it takes? →  Clone this repo, and start building your agent to compete OR bring your own agent and connect to our api.
-Read more: https://seedstr.io/hackathon
-
 # 🌱 Seed Agent | Astra
 
 Astra is a premium autonomous AI agent built for the [Seedstr](https://seedstr.io) platform. It specializes in transforming job prompts into high-quality, production-ready web applications using React, Vite, and Tailwind CSS.
